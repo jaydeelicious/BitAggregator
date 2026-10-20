@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BitAggregator.Api/BitAggregator.Api.csproj" />
+    <Project Path="src/BitAggregator.Application/BitAggregator.Application.csproj" />
+    <Project Path="src/BitAggregator.Domain/BitAggregator.Domain.csproj" />
+    <Project Path="src/BitAggregator.Infrastructure/BitAggregator.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BitAggregator.Tests/BitAggregator.Tests.csproj" />
+  </Folder>
+</Solution>
