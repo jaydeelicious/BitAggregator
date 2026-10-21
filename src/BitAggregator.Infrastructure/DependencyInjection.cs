@@ -1,4 +1,5 @@
 ﻿using BitAggregator.Application.Interfaces;
+using BitAggregator.Infrastructure.PriceSources;
 using BitAggregator.Infrastructure.Persistence;
 using BitAggregator.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,14 @@ public static class DependencyInjection
             options.UseSqlite(connectionString));
 
         services.AddScoped<IAggregatedPriceRepository, AggregatedPriceRepository>();
+
+        services.AddHttpClient<IPriceSource, BitstampPriceSource>(
+            client =>
+            {
+                client.BaseAddress = new Uri("https://www.bitstamp.net/");
+
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
 
         return services;
     }
