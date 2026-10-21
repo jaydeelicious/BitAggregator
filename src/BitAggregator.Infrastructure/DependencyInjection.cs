@@ -27,7 +27,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAggregatedPriceRepository, AggregatedPriceRepository>();
 
-        services.AddHttpClient<IPriceSource, BitstampPriceSource>(
+        services.AddHttpClient<BitstampPriceSource>(
             client =>
             {
                 client.BaseAddress = new Uri("https://www.bitstamp.net/");
@@ -35,13 +35,17 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(10);
             });
 
-        services.AddHttpClient<IPriceSource, BitfinexPriceSource>(
+        services.AddHttpClient<BitfinexPriceSource>(
             client =>
             {
                 client.BaseAddress = new Uri("https://api-pub.bitfinex.com/");
 
                 client.Timeout = TimeSpan.FromSeconds(10);
             });
+
+        services.AddTransient<IPriceSource>(sp => sp.GetRequiredService<BitstampPriceSource>());
+
+        services.AddTransient<IPriceSource>(sp => sp.GetRequiredService<BitfinexPriceSource>());
 
         return services;
     }

@@ -157,7 +157,7 @@ public sealed class PriceAggregationServiceTests
             bitstamp.Object,
             bitfinex.Object);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<PriceSourceUnavailableException>(() =>
             service.GetPriceAsync("BTC/USD", Timestamp));
 
         _repository.Verify(x => x.AddAsync(
