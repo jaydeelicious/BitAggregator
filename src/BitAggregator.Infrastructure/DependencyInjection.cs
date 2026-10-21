@@ -35,6 +35,14 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(10);
             });
 
+        services.AddHttpClient<IPriceSource, BitfinexPriceSource>(
+            client =>
+            {
+                client.BaseAddress = new Uri("https://api-pub.bitfinex.com/");
+
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
+
         return services;
     }
 }
