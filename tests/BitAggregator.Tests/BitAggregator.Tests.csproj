@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BitAggregator.Api\BitAggregator.Api.csproj" />
     <ProjectReference Include="..\..\src\BitAggregator.Infrastructure\BitAggregator.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\BitAggregator.Web\BitAggregator.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

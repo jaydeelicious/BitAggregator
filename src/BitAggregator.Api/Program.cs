@@ -13,6 +13,18 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+const string blazorCorsPolicy = "BlazorFrontend";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(blazorCorsPolicy, policy =>
+    {
+        policy.WithOrigins("http://localhost:5180")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -30,6 +42,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors(blazorCorsPolicy);
 
 app.MapControllers();
 
