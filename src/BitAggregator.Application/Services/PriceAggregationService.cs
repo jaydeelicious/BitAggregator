@@ -35,7 +35,7 @@ public sealed class PriceAggregationService(
 
         if (prices.Any(price => price is null))
         {
-            throw new InvalidOperationException("One or more price sources did not return a price.");
+            throw new PriceSourceUnavailableException("One or more price sources did not return a price.");
         }
 
         var sourceResults = prices.Select(price => price!).ToArray();
