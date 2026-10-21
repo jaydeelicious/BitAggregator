@@ -14,6 +14,8 @@ public sealed class BitAggregatorApiFactory
 {
     public Mock<IPriceAggregationService> AggregationService { get; } = new();
 
+    public Mock<IAggregatedPriceRepository> PriceRepository { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -22,8 +24,11 @@ public sealed class BitAggregatorApiFactory
         {
             services.RemoveAll<IPriceAggregationService>();
 
-            services.AddSingleton(
-                AggregationService.Object);
+            services.AddSingleton(AggregationService.Object);
+
+            services.RemoveAll<IAggregatedPriceRepository>();
+
+            services.AddSingleton(PriceRepository.Object);
         });
     }
 }
