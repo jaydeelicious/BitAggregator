@@ -4,6 +4,7 @@
     <Project Path="src/BitAggregator.Application/BitAggregator.Application.csproj" />
     <Project Path="src/BitAggregator.Domain/BitAggregator.Domain.csproj" />
     <Project Path="src/BitAggregator.Infrastructure/BitAggregator.Infrastructure.csproj" />
+    <Project Path="src/BitAggregator.Web/BitAggregator.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BitAggregator.Tests/BitAggregator.Tests.csproj" />

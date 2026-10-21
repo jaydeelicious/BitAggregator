@@ -1,0 +1,45 @@
+﻿@page "/"
+@using BitAggregator.Web.Services
+@using BitAggregator.Web.Models
+@inject PriceApiClient PriceClient
+
+<PageTitle>BitAggregator</PageTitle>
+
+<h1>BitAggregator</h1>
+
+<button @onclick="LoadPriceAsync">
+    Test API connection
+</button>
+
+@if (price is not null)
+{
+    <p>Instrument: @price.Instrument</p>
+    <p>Aggregated price: @price.AggregatedPrice</p>
+    <p>Result source: @price.ResultSource</p>
+}
+else if (error is not null)
+{
+    <p role="alert">@error</p>
+}
+
+@code {
+    private PriceResponse? price;
+    private string? error;
+
+    private async Task LoadPriceAsync()
+    {
+        error = null;
+
+        try
+        {
+            price = await PriceClient.GetPriceAsync(
+                "BTCUSD",
+                new DateTimeOffset(
+                    2023, 1, 1, 1, 0, 0, TimeSpan.Zero));
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+}
