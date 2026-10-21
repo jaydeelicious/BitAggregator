@@ -1,6 +1,7 @@
 ﻿using BitAggregator.Domain.Entities;
 using BitAggregator.Infrastructure.Repositories;
 using BitAggregator.Tests.Infrastructure;
+using BitAggregator.Application.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.CompilerServices;
 
@@ -126,7 +127,7 @@ public sealed class AggregatedPriceRepositoryTests
 
         await repository.AddAsync(CreateAggregate("BTC/USD", timestamp));
 
-        await Assert.ThrowsAsync<DbUpdateException>(() =>
+        await Assert.ThrowsAsync<PriceAlreadyExistsException>(() =>
             repository.AddAsync(CreateAggregate("BTC/USD", timestamp)));
     }
 
