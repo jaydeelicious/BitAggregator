@@ -1,45 +1,275 @@
 ﻿@page "/"
-@using BitAggregator.Web.Services
+@using System.Globalization
+@using System.Net
+@using System.Net.Http
 @using BitAggregator.Web.Models
+@using BitAggregator.Web.Services
 @inject PriceApiClient PriceClient
 
-<PageTitle>BitAggregator</PageTitle>
+<PageTitle>Price Lookup | BitAggregator</PageTitle>
 
-<h1>BitAggregator</h1>
+<div class="price-dashboard">
+    <header class="dashboard-header">
+        <div class="brand">
+            <div class="brand-icon">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     width="26"
+                     height="26"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round"
+                     aria-hidden="true">
+                    <path d="M3 3v18h18" />
+                    <path d="m7 16 4-5 4 3 5-7" />
+                    <path d="M17 7h3v3" />
+                </svg>
+            </div>
 
-<button @onclick="LoadPriceAsync">
-    Test API connection
-</button>
+            <div>
+                <h1>BitAggregator</h1>
+                <p>Bitcoin price intelligence</p>
+            </div>
+        </div>
 
-@if (price is not null)
-{
-    <p>Instrument: @price.Instrument</p>
-    <p>Aggregated price: @price.AggregatedPrice</p>
-    <p>Result source: @price.ResultSource</p>
-}
-else if (error is not null)
-{
-    <p role="alert">@error</p>
-}
+        <span class="instrument-badge">BTC/USD</span>
+    </header>
+
+    <section class="dashboard-card" aria-labelledby="lookup-title">
+        <h2 id="lookup-title">Price lookup</h2>
+        <p>Choose an instrument and an hourly UTC timestamp.</p>
+
+        <div class="lookup-fields">
+            <div class="field">
+                <label for="instrument">Instrument</label>
+                <select id="instrument"
+                        @bind="selectedInstrument"
+                        disabled="@isLoading">
+                    <option value="BTCUSD">BTC/USD</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="price-date">Date (UTC)</label>
+                <input id="price-date"
+                       type="date"
+                       @bind="selectedDate"
+                       @bind:format="yyyy-MM-dd"
+                       disabled="@isLoading"
+                       required />
+            </div>
+
+            <div class="field">
+                <label for="price-hour">Hour (UTC)</label>
+                <select id="price-hour"
+                        @bind="selectedHour"
+                        disabled="@isLoading">
+                    @for (var hour = 0; hour < 24; hour++)
+                    {
+                        <option value="@hour">
+                            @($"{hour:D2}:00")
+                        </option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <p class="field-hint">
+            All timestamps use UTC. Select a date and a full hour.
+        </p>
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <div class="feedback-error" role="alert">
+                @validationError
+            </div>
+        }
+
+        <button class="lookup-button"
+                @onclick="LookupPriceAsync"
+                disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span>Retrieving price...</span>
+            }
+            else
+            {
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     width="19"
+                     height="19"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round"
+                     aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                </svg>
+
+                <span>Get aggregated price</span>
+            }
+        </button>
+    </section>
+
+    @if (isLoading)
+    {
+        <div class="loading-state" role="status">
+            Retrieving the aggregated price...
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(apiError))
+    {
+        <div class="feedback-error" role="alert">
+            @apiError
+        </div>
+    }
+
+    @if (price is not null && !isLoading)
+    {
+        <section class="dashboard-card result-card"
+                 aria-labelledby="result-title">
+            <p class="eyebrow" id="result-title">
+                AGGREGATED @price.Instrument PRICE
+            </p>
+
+            <div class="aggregate-value">
+                @price.AggregatedPrice.ToString("N2", CultureInfo.InvariantCulture)
+                <span>USD</span>
+            </div>
+
+            <div class="origin-row">
+                <span class="origin-badge @(isCached ? "cached" : "external")">
+                    @(isCached ? "Datastore" : "External APIs")
+                </span>
+
+                <span>
+                    @(isCached
+                        ? "Retrieved from persisted prices"
+                        : "Fetched and aggregated from exchanges")
+                </span>
+            </div>
+
+            <p class="result-timestamp">
+                @price.Timestamp.ToString(
+                    "yyyy-MM-dd HH:mm 'UTC'",
+                    CultureInfo.InvariantCulture)
+            </p>
+
+            <div class="source-panel">
+                <h3>Source prices</h3>
+
+                @foreach (var source in price.SourcePrices)
+                {
+                    <div class="source-row">
+                        <span>@source.Source</span>
+                        <strong>
+                            @source.Price.ToString(
+                                "N2",
+                                CultureInfo.InvariantCulture) USD
+                        </strong>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+</div>
 
 @code {
-    private PriceResponse? price;
-    private string? error;
+    private string selectedInstrument = "BTCUSD";
 
-    private async Task LoadPriceAsync()
+    // The date input represents a UTC calendar date.
+    private DateTime selectedDate =
+        new(2023, 1, 1);
+
+    private int selectedHour = 1;
+
+    private PriceResponse? price;
+    private string? validationError;
+    private string? apiError;
+    private bool isLoading;
+
+    private bool isCached =>
+        string.Equals(
+            price?.ResultSource,
+            "Datastore",
+            StringComparison.OrdinalIgnoreCase);
+
+    private async Task LookupPriceAsync()
     {
-        error = null;
+        if (isLoading)
+        {
+            return;
+        }
+
+        validationError = null;
+        apiError = null;
+        price = null;
+
+        if (selectedDate == default)
+        {
+            validationError = "Please select a valid date.";
+            return;
+        }
+
+        if (selectedHour is < 0 or > 23)
+        {
+            validationError = "Please select a valid UTC hour.";
+            return;
+        }
+
+        // Construct an exact-hour UTC timestamp without
+        // converting the selected date from local time.
+        var timestamp = new DateTimeOffset(
+            selectedDate.Year,
+            selectedDate.Month,
+            selectedDate.Day,
+            selectedHour,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        if (timestamp > DateTimeOffset.UtcNow)
+        {
+            validationError =
+                "The requested hourly candle is not yet complete.";
+            return;
+        }
+
+        isLoading = true;
 
         try
         {
             price = await PriceClient.GetPriceAsync(
-                "BTCUSD",
-                new DateTimeOffset(
-                    2023, 1, 1, 1, 0, 0, TimeSpan.Zero));
+                selectedInstrument,
+                timestamp);
         }
-        catch (Exception ex)
+
+        catch (ApiException ex)
         {
-            error = ex.Message;
+            apiError = ex.Message;
+        }
+        catch (HttpRequestException)
+        {
+            apiError = "Unable to connect to the backend API. Please check your connection.";
+        }
+
+        catch (TaskCanceledException)
+        {
+            apiError = "The request timed out. Please try again.";
+        }
+        catch (Exception)
+        {
+            apiError =
+                "An unexpected error occurred while retrieving the price.";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 }

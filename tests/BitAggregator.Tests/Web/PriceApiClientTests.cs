@@ -98,11 +98,54 @@ public sealed class PriceApiClientTests
 
         var apiClient = new PriceApiClient(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() =>
+        var exception = await Assert.ThrowsAsync<ApiException>(() =>
+            apiClient.GetPriceAsync("BTCUSD", new DateTimeOffset(2026, 1, 1, 1, 0, 0, TimeSpan.Zero)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
+    }
+
+
+    [Fact]
+    public async Task GetPriceAsync_ValidationProblem_UsesBackendMessage()
+    {
+        using var httpClient = new HttpClient(
+            new StubHandler(_ =>
+                new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(
+                        """
+                    {
+                      "title": "Invalid price lookup request",
+                      "status": 400,
+                      "errors": {
+                        "timestamp": [
+                          "Timestamp must be aligned to a full hour."
+                        ]
+                      }
+                    }
+                    """,
+                        Encoding.UTF8,
+                        "application/problem+json")
+                }))
+        {
+            BaseAddress = new Uri("https://localhost:7017/")
+        };
+
+        var apiClient = new PriceApiClient(httpClient);
+
+        var exception = await Assert.ThrowsAsync<ApiException>(() =>
             apiClient.GetPriceAsync(
                 "BTCUSD",
-                new DateTimeOffset(2023, 1, 1, 1, 0, 0, TimeSpan.Zero)));
+                new DateTimeOffset(
+                    2026, 1, 1, 1, 30, 0, TimeSpan.Zero)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
+
+        Assert.Equal(
+            "Timestamp must be aligned to a full hour.",
+            exception.Message);
     }
+
 
     private sealed class StubHandler(
         Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
