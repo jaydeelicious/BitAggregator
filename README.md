@@ -10,7 +10,7 @@ A standalone Blazor WebAssembly frontend provides price lookup and persisted-pri
 
 | Component | Technology |
 |---|---|
-| Backend | ASP.NET Core Web API, .NET 10, SQLite |
+| Backend | ASP.NET Core Web API, .NET 10|
 | Frontend | Blazor WebAssembly, .NET 10 |
 | Persistence | SQLite with Entity Framework Core |
 | Automated testing | xUnit, Moq, bUnit |
