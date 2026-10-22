@@ -1,0 +1,311 @@
+﻿
+@page "/history"
+@using System.Globalization
+@using System.Net.Http
+@using BitAggregator.Web.Models
+@using BitAggregator.Web.Services
+@inject PriceApiClient PriceClient
+
+<PageTitle>Price History | BitAggregator</PageTitle>
+
+<div class="history-dashboard">
+    <header class="history-header">
+        <div>
+            <h1>Persisted price history</h1>
+            <p>Explore previously aggregated BTC/USD prices.</p>
+        </div>
+
+        <span class="history-badge">BTC/USD</span>
+    </header>
+
+    <section class="history-card" aria-labelledby="filters-title">
+        <h2 id="filters-title">Search history</h2>
+        <p>
+            Choose a UTC date range. Only prices already stored
+            in the datastore will be returned.
+        </p>
+
+        <div class="history-fields">
+            <div class="history-field">
+                <label for="from-date">From date (UTC)</label>
+                <input id="from-date"
+                       type="date"
+                       @bind="fromDate"
+                       @bind:format="yyyy-MM-dd"
+                       disabled="@isLoading" />
+            </div>
+
+            <div class="history-field">
+                <label for="from-hour">From hour (UTC)</label>
+                <select id="from-hour"
+                        @bind="fromHour"
+                        disabled="@isLoading">
+                    @for (var hour = 0; hour < 24; hour++)
+                    {
+                        <option value="@hour">@($"{hour:D2}:00")</option>
+                    }
+                </select>
+            </div>
+
+            <div class="history-field">
+                <label for="to-date">To date (UTC)</label>
+                <input id="to-date"
+                       type="date"
+                       @bind="toDate"
+                       @bind:format="yyyy-MM-dd"
+                       disabled="@isLoading" />
+            </div>
+
+            <div class="history-field">
+                <label for="to-hour">To hour (UTC)</label>
+                <select id="to-hour"
+                        @bind="toHour"
+                        disabled="@isLoading">
+                    @for (var hour = 0; hour < 24; hour++)
+                    {
+                        <option value="@hour">@($"{hour:D2}:00")</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <p class="history-hint">
+            Both boundaries are inclusive and must represent full UTC hours.
+        </p>
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <div class="history-error" role="alert">
+                @validationError
+            </div>
+        }
+
+        <button class="history-button"
+                disabled="@isLoading"
+                @onclick="LoadHistoryAsync">
+            @if (isLoading)
+            {
+                <span>Loading history...</span>
+            }
+            else
+            {
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     width="19"
+                     height="19"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round"
+                     aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                </svg>
+
+                <span>Search persisted prices</span>
+            }
+        </button>
+    </section>
+
+    @if (isLoading)
+    {
+        <div class="history-loading" role="status">
+            Loading persisted price history...
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(apiError))
+    {
+        <div class="history-error" role="alert">
+            @apiError
+        </div>
+    }
+
+    @if (!isLoading && hasSearched && prices is not null)
+    {
+        <section class="history-card" aria-labelledby="results-title">
+            <div class="history-results-heading">
+                <h2 id="results-title">Historical prices</h2>
+                <span>@prices.Count record(s)</span>
+            </div>
+
+            @if (prices.Count == 0)
+            {
+                <div class="history-empty" role="status">
+                    <h3>No persisted prices found</h3>
+                    <p>
+                        No records exist for this UTC time range.
+                        Use Price lookup to retrieve and persist
+                        individual timestamps first.
+                    </p>
+                </div>
+            }
+            else
+            {
+                <div class="history-table-scroll">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">UTC timestamp</th>
+                                <th scope="col">Aggregated (USD)</th>
+                                <th scope="col">Bitstamp (USD)</th>
+                                <th scope="col">Bitfinex (USD)</th>
+                                <th scope="col">Origin</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var item in prices)
+                            {
+                                <tr>
+                                    <td>
+                                        @item.Timestamp.ToString(
+                                            "yyyy-MM-dd HH:mm",
+                                            CultureInfo.InvariantCulture)
+                                    </td>
+
+                                    <td class="price-value">
+                                        @FormatPrice(item.AggregatedPrice)
+                                    </td>
+
+                                    <td>
+                                        @FormatSourcePrice(item, "Bitstamp")
+                                    </td>
+
+                                    <td>
+                                        @FormatSourcePrice(item, "Bitfinex")
+                                    </td>
+
+                                    <td>
+                                        <span class="history-origin">
+                                            @item.ResultSource
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private DateTime fromDate = new(2023, 1, 1);
+    private int fromHour = 0;
+
+    private DateTime toDate = new(2023, 1, 2);
+    private int toHour = 0;
+
+    private IReadOnlyList<PriceResponse>? prices;
+
+    private string? validationError;
+    private string? apiError;
+
+    private bool isLoading;
+    private bool hasSearched;
+
+    private async Task LoadHistoryAsync()
+    {
+        if (isLoading)
+        {
+            return;
+        }
+
+        validationError = null;
+        apiError = null;
+        prices = null;
+        hasSearched = false;
+
+        if (fromDate == default || toDate == default)
+        {
+            validationError = "Please select valid start and end dates.";
+            return;
+        }
+
+        if (fromHour is < 0 or > 23 || toHour is < 0 or > 23)
+        {
+            validationError = "Please select valid UTC hours.";
+            return;
+        }
+
+        var from = new DateTimeOffset(
+            fromDate.Year,
+            fromDate.Month,
+            fromDate.Day,
+            fromHour,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        var to = new DateTimeOffset(
+            toDate.Year,
+            toDate.Month,
+            toDate.Day,
+            toHour,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        if (from > to)
+        {
+            validationError =
+                "The start timestamp must not be later than the end timestamp.";
+            return;
+        }
+
+        isLoading = true;
+
+        try
+        {
+            prices = await PriceClient.GetHistoryAsync(
+                "BTCUSD",
+                from,
+                to);
+
+            hasSearched = true;
+        }
+        catch (ApiException ex)
+        {
+            apiError = ex.Message;
+        }
+        catch (HttpRequestException)
+        {
+            apiError =
+                "Unable to connect to the backend API. Please check your connection.";
+        }
+        catch (TaskCanceledException)
+        {
+            apiError = "The request timed out. Please try again.";
+        }
+        catch (Exception)
+        {
+            apiError =
+                "An unexpected error occurred while retrieving history.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string FormatPrice(double price) =>
+        price.ToString("N2", CultureInfo.InvariantCulture);
+
+    private static string FormatSourcePrice(
+        PriceResponse price,
+        string sourceName)
+    {
+        var source = price.SourcePrices.FirstOrDefault(x =>
+            string.Equals(
+                x.Source,
+                sourceName,
+                StringComparison.OrdinalIgnoreCase));
+
+        return source is null
+            ? "—"
+            : FormatPrice(source.Price);
+    }
+}

@@ -1,5 +1,17 @@
 ﻿@inherits LayoutComponentBase
 
 <main class="app-shell">
-    @Body
+    <div class="app-container">
+        <nav class="app-navigation" aria-label="Main navigation">
+            <NavLink href="/" Match="NavLinkMatch.All">
+                Price lookup
+            </NavLink>
+
+            <NavLink href="/history">
+                Price history
+            </NavLink>
+        </nav>
+
+        @Body
+    </div>
 </main>
