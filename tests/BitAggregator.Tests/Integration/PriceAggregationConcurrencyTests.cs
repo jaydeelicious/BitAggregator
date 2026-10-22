@@ -55,8 +55,7 @@ public sealed class PriceAggregationConcurrencyTests
                 sources,
                 aggregator);
 
-            var timestamp = new DateTime(
-                2023, 1, 1, 1, 0, 0, DateTimeKind.Utc);
+            var timestamp = new DateTime(2023, 1, 1, 1, 0, 0, DateTimeKind.Utc);
 
             var request1 = service1.GetPriceAsync("BTC/USD", timestamp);
             var request2 = service2.GetPriceAsync("BTC/USD", timestamp);
